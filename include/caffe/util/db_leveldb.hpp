@@ -1,4 +1,3 @@
-#ifdef USE_LEVELDB
 #ifndef CAFFE_UTIL_DB_LEVELDB_HPP
 #define CAFFE_UTIL_DB_LEVELDB_HPP
 
@@ -14,10 +13,7 @@ namespace caffe { namespace db {
 class LevelDBCursor : public Cursor {
  public:
   explicit LevelDBCursor(leveldb::Iterator* iter)
-    : iter_(iter) {
-    SeekToFirst();
-    CHECK(iter_->status().ok()) << iter_->status().ToString();
-  }
+    : iter_(iter) { SeekToFirst(); }
   ~LevelDBCursor() { delete iter_; }
   virtual void SeekToFirst() { iter_->SeekToFirst(); }
   virtual void Next() { iter_->Next(); }
@@ -75,4 +71,3 @@ class LevelDB : public DB {
 }  // namespace caffe
 
 #endif  // CAFFE_UTIL_DB_LEVELDB_HPP
-#endif  // USE_LEVELDB

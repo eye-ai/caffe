@@ -2,8 +2,9 @@
 #include <cfloat>
 #include <vector>
 
-#include "caffe/layers/pooling_layer.hpp"
+#include "caffe/layer.hpp"
 #include "caffe/util/math_functions.hpp"
+#include "caffe/vision_layers.hpp"
 
 namespace caffe {
 
@@ -138,7 +139,7 @@ __global__ void StoPoolForwardTest(const int nthreads,
     const int wstart = pw * stride_w;
     const int wend = min(wstart + kernel_w, width);
     // We set cumsum to be 0 to avoid divide-by-zero problems
-    Dtype cumsum = 0.;
+    Dtype cumsum = FLT_MIN;
     Dtype cumvalues = 0.;
     const Dtype* const bottom_slice =
         bottom_data + (n * channels + c) * height * width;
@@ -149,7 +150,7 @@ __global__ void StoPoolForwardTest(const int nthreads,
         cumvalues += bottom_slice[h * width + w] * bottom_slice[h * width + w];
       }
     }
-    top_data[index] = (cumsum > 0.) ? cumvalues / cumsum : 0.;
+    top_data[index] = cumvalues / cumsum;
   }
 }
 

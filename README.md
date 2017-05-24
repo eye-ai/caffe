@@ -1,37 +1,69 @@
-# Caffe
+# caffe-augmentation
 
-[![Build Status](https://travis-ci.org/BVLC/caffe.svg?branch=master)](https://travis-ci.org/BVLC/caffe)
-[![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
+Caffe with real-time data augmentation
 
-Caffe is a deep learning framework made with expression, speed, and modularity in mind.
-It is developed by Berkeley AI Research ([BAIR](http://bair.berkeley.edu))/The Berkeley Vision and Learning Center (BVLC) and community contributors.
 
-Check out the [project site](http://caffe.berkeleyvision.org) for all the details like
+## Introduction
+Data augmentation is a simple yet effective way to enrich training data. However, we don't want to re-create a dataset (such as ImageNet) with more than millions of images every time when we change our augmentation strategy. To address this problem, this project provides real-time training data augmentation. During training, caffe will augment training data with random combination of different geometric transformations (scaling, rotation, cropping), image variations (blur, sharping, JPEG compression), and lighting adjustments.
 
-- [DIY Deep Learning for Vision with Caffe](https://docs.google.com/presentation/d/1UeKXVgRvvxg9OUdh_UiC5G71UMscNPlvArsWER41PsU/edit#slide=id.p)
-- [Tutorial Documentation](http://caffe.berkeleyvision.org/tutorial/)
-- [BAIR reference models](http://caffe.berkeleyvision.org/model_zoo.html) and the [community model zoo](https://github.com/BVLC/caffe/wiki/Model-Zoo)
-- [Installation instructions](http://caffe.berkeleyvision.org/installation.html)
+<img src="https://www.csie.ntu.edu.tw/~r01944012/bb.gif" width="500">
 
-and step-by-step examples.
 
-[![Join the chat at https://gitter.im/BVLC/caffe](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/BVLC/caffe?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+## Realtime data augmentation
+Realtime data augmentation is implemented within the `ImageData` layer. We provide several augmentations as below:
+- Geometric transform: random flipping, cropping, resizing, rotation
+- Smooth filtering
+- JPEG compression
+- Contrast & brightness adjustment
 
-Please join the [caffe-users group](https://groups.google.com/forum/#!forum/caffe-users) or [gitter chat](https://gitter.im/BVLC/caffe) to ask questions and talk about methods and models.
-Framework development discussions and thorough bug reports are collected on [Issues](https://github.com/BVLC/caffe/issues).
 
-Happy brewing!
+## How to use
+You could specify your network prototxt as:
 
-## License and Citation
-
-Caffe is released under the [BSD 2-Clause license](https://github.com/BVLC/caffe/blob/master/LICENSE).
-The BAIR/BVLC reference models are released for unrestricted use.
-
-Please cite Caffe in your publications if it helps your research:
-
-    @article{jia2014caffe,
-      Author = {Jia, Yangqing and Shelhamer, Evan and Donahue, Jeff and Karayev, Sergey and Long, Jonathan and Girshick, Ross and Guadarrama, Sergio and Darrell, Trevor},
-      Journal = {arXiv preprint arXiv:1408.5093},
-      Title = {Caffe: Convolutional Architecture for Fast Feature Embedding},
-      Year = {2014}
+    layer {
+    name: "data"
+    type: "ImageData"
+    top: "data"
+    top: "label"
+    include {
+      phase: TRAIN
     }
+    transform_param {
+      mirror: true
+      crop_size: 227
+      mean_file: "/home/your/imagenet_mean.binaryproto"
+      contrast_adjustment: true
+      smooth_filtering: true
+      jpeg_compression: true
+      rotation_angle_interval: 30
+      display: true
+    }
+    image_data_param {
+      source: "/home/your/image/list.txt"
+      batch_size: 32
+      shuffle: true
+      new_height: 256
+      new_width: 256
+    }
+    }
+
+You could also find a toy example at `/examples/SSDH/train_val.prototxt`
+
+Note: ImageData Layer is currently not supported in TEST mode
+
+
+## Setup caffe-augmentation
+Adjust Makefile.config and simply run the following commands:
+
+    $ make all -j8
+
+For a faster build, compile in parallel by doing `make all -j8` where 8 is the number of parallel threads for compilation (a good choice for the number of threads is the number of cores in your machine).
+
+
+## Acknowledgment
+This project is based upon [@ChenlongChen](https://github.com/ChenglongChen)'s [caffe-windows](https://github.com/ChenglongChen/caffe-windows), [@ShaharKatz](https://github.com/ShaharKatz)'s [Caffe-Data-Augmentation](https://github.com/ShaharKatz/Caffe-Data-Augmentation), and [@senecaur](https://github.com/senecaur)'s [caffe-rta](https://github.com/senecaur/caffe-rta). Thank you for your inspiration!
+
+
+
+
+
