@@ -308,7 +308,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 152 (last added: lifted_struct_sim)
+// LayerParameter next available layer-specific ID: 148 (last added: lifted_struct_sim)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -405,7 +405,7 @@ message LayerParameter {
   optional ThresholdParameter threshold_param = 128;
   optional TileParameter tile_param = 138;
   optional WindowDataParameter window_data_param = 129;
-  optional LiftedStructSimilaritySoftmaxLossParameter lifted_struct_sim_softmax_loss_param = 151;
+  optional LiftedStructSimilaritySoftmaxLossParameter lifted_struct_sim_softmax_loss_param = 147;
 }
 
 // Message that stores parameters used to apply transformation
