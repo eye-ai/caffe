@@ -308,7 +308,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 148 (last added: lifted_struct_sim)
+// LayerParameter next available layer-specific ID: 149 (last added: pair_fast_loss_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -406,6 +406,7 @@ message LayerParameter {
   optional TileParameter tile_param = 138;
   optional WindowDataParameter window_data_param = 129;
   optional LiftedStructSimilaritySoftmaxLossParameter lifted_struct_sim_softmax_loss_param = 147;
+  optional PairFastLossParameter pair_fast_loss_param = 148;
 }
 
 // Message that stores parameters used to apply transformation
@@ -1425,3 +1426,16 @@ message PReLUParameter {
   // Whether or not slope parameters are shared across channels.
   optional bool channel_shared = 2 [default = false];
 }
+
+message PairFastLossParameter {
+     optional float margin = 1 [default = 1.0];
+     optional float hard_ratio = 2 [default = 1.0];
+     optional float factor = 3 [default = 10];
+     enum MODE {
+       POS = 0;
+       NEG = 1;
+       BOTH = 2;
+     }
+     optional MODE mode = 4 [default = BOTH];
+   }
+
