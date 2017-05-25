@@ -10,6 +10,11 @@
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/rng.hpp"
 
+#include <opencv2/core/core.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
 namespace caffe {
 
 template<typename Dtype>
@@ -251,6 +256,155 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   CHECK_GT(img_channels, 0);
   CHECK_GE(img_height, crop_size);
   CHECK_GE(img_width, crop_size);
+
+  /*----------------------------------------------------------------------
+   * Addition for Data Augmentation
+   * ------------------------------------------------------------------ */
+  //data augmentation on-the-fly
+  cv::Mat cv_img;
+  img.copyTo(cv_img);									   
+  const bool display = param_.display();
+  const bool contrast_adjustment = param_.contrast_adjustment();
+  const bool smooth_filtering = param_.smooth_filtering();
+  const bool jpeg_compression = param_.jpeg_compression();
+  // param for rotation
+  const float rotation_angle_interval = param_.rotation_angle_interval();
+
+
+  if (display && phase_ == TRAIN)
+	  cv::imshow("Source", cv_img);
+
+  // Flipping and Reflection -----------------------------------------------------------------
+	int flipping_mode = (Rand(4)) - 1; // -1, 0, 1, 2
+	bool apply_flipping = (flipping_mode != 2);
+	if (apply_flipping) {
+		cv::flip(cv_img,cv_img,flipping_mode);
+		if (display && phase_ == TRAIN)
+			cv::imshow("Flipping and Reflection", cv_img);
+	}
+
+
+  // Smooth Filtering -------------------------------------------------------------
+  int smooth_param1 = 3;
+  int apply_smooth = Rand(2);
+  if ( smooth_filtering && apply_smooth ) {
+	int smooth_type = Rand(4); // see opencv_util.hpp
+	smooth_param1 = 3 + 2*(Rand(1));
+        switch(smooth_type){
+        case 0:
+	   //cv::Smooth(cv_img, cv_img, smooth_type, smooth_param1);
+	   cv::GaussianBlur(cv_img, cv_img, cv::Size(smooth_param1,smooth_param1),0);
+           break;
+        case 1:
+           cv::blur(cv_img, cv_img, cv::Size(smooth_param1,smooth_param1));
+           break;
+        case 2:
+           cv::medianBlur(cv_img, cv_img, smooth_param1);
+           break;
+        case 3:
+           cv::boxFilter(cv_img, cv_img, -1, cv::Size(smooth_param1*2,smooth_param1*2));
+           break;
+        }
+	if (display && phase_ == TRAIN)
+      cv::imshow("Smooth Filtering", cv_img);
+  }
+  cv::RNG rng;
+
+  // Contrast and Brightness Adjuestment ----------------------------------------
+  float alpha = 1, beta = 0;
+  int apply_contrast = Rand(2);
+  if ( contrast_adjustment && apply_contrast ) {
+    float min_alpha = 0.8, max_alpha = 1.2;
+    alpha = rng.uniform(min_alpha, max_alpha);
+    beta = (float)(Rand(6));
+	// flip sign
+	if ( Rand(2) ) beta = - beta;
+    cv_img.convertTo(cv_img, -1 , alpha, beta);
+	if (display && phase_ == TRAIN)
+     		cv::imshow("Contrast Adjustment", cv_img);
+  }
+
+  // JPEG Compression -------------------------------------------------------------
+  // DO NOT use the following code as there is some memory leak which I cann't figure out
+  int QF = 100;
+  int apply_JPEG = Rand(2);
+  if ( jpeg_compression && apply_JPEG ) {
+	// JPEG quality factor
+	QF = 95 + 1 * (Rand(6));
+        int cp[] = {1, QF};
+	vector<int> compression_params(cp,cp + 2);
+        vector<unsigned char> img_jpeg;
+	//cv::imencode(".jpg", cv_img, img_jpeg);
+        cv::imencode(".jpg", cv_img, img_jpeg, compression_params);
+	cv::Mat temp = cv::imdecode(img_jpeg, 1);
+        temp.copyTo(cv_img);
+	if (display && phase_ == TRAIN)
+      cv::imshow("JPEG Compression", cv_img);
+  }
+
+  // Rotation -------------------------------------------------------------
+  double rotation_degree;
+  if ( rotation_angle_interval!=1 ) {
+  cv::Mat dst;
+  int interval = 360/rotation_angle_interval;
+  int apply_rotation = Rand(interval);
+
+  cv::Size dsize = cv::Size(cv_cropped_img.cols*1.5,cv_cropped_img.rows*1.5);
+  cv::Mat resize_img = cv::Mat(dsize,CV_32S);
+  cv::resize(cv_cropped_img, resize_img,dsize);
+
+  cv::Point2f pt(resize_img.cols/2., resize_img.rows/2.);    
+  rotation_degree = apply_rotation*rotation_angle_interval;
+  cv::Mat r = getRotationMatrix2D(pt, rotation_degree, 1.0);
+  warpAffine(resize_img, dst, r, cv::Size(resize_img.cols, resize_img.rows));
+
+
+  cv::Rect myROI(resize_img.cols/6, resize_img.rows/6, cv_cropped_img.cols, cv_cropped_img.rows);
+  cv::Mat crop_after_rotate = dst(myROI);
+  if (display && phase_ == TRAIN)
+      cv::imshow("Rotation", crop_after_rotate);
+
+
+  crop_after_rotate.copyTo(cv_img);
+  }
+  
+  if (display && phase_ == TRAIN)
+      cv::imshow("Final", cv_img);
+
+  //----------------------------------------------------------------------
+  //--------------------!! for debug only !!-------------------
+  if (display && phase_ == TRAIN) {
+	LOG(INFO) << "----------------------------------------";
+	LOG(INFO) << "src width: " << width << ", src height: " << height;
+	LOG(INFO) << "dest width: " << crop_size << ", dest height: " << crop_size;
+	if (apply_flipping) {
+		LOG(INFO) << "* parameter for flipping: ";
+		LOG(INFO) << "  flipping_mode: " << flipping_mode;
+	}
+	if ( smooth_filtering && apply_smooth ) {
+          LOG(INFO) << "* parameter for smooth filtering: ";
+	  //LOG(INFO) << "  smooth type: " << smooth_type << ", smooth param1: " << smooth_param1;
+	}
+	if ( contrast_adjustment && apply_contrast ) {
+	  LOG(INFO) << "* parameter for contrast adjustment: ";
+	  LOG(INFO) << "  alpha: " << alpha << ", beta: " << beta;
+	}
+	if ( jpeg_compression && apply_JPEG ) {
+	  LOG(INFO) << "* parameter for JPEG compression: ";
+	  LOG(INFO) << "  QF: " << QF;
+	}
+	LOG(INFO) << "* parameter for cropping: ";
+	LOG(INFO) << "  w: " << w_off << ", h: " << h_off;
+	LOG(INFO) << "  roi_width: " << crop_size << ", roi_height: " << crop_size;
+	LOG(INFO) << "* parameter for rotation: ";
+	LOG(INFO) << "  angle_interval: " << rotation_angle_interval;
+	LOG(INFO) << "  angle: " << rotation_degree;
+    cvWaitKey(10);
+  }
+  /*----------------------------------------------------------------------
+   * !!!End of Addition for Data Augmentation
+   * ------------------------------------------------------------------ */
+
 
   Dtype* mean = NULL;
   if (has_mean_file) {
