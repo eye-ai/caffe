@@ -1,37 +1,34 @@
-# Caffe
+# Caffe For Image Search
+Customized `caffe` for Image Search. Installation is the same as `BVLC/caffe` [installation](http://caffe.berkeleyvision.org/installation.html)
 
-[![Build Status](https://travis-ci.org/BVLC/caffe.svg?branch=master)](https://travis-ci.org/BVLC/caffe)
-[![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
+## Base caffe version: 
+`BVLC/caffe v1.0` https://github.com/BVLC/caffe/tree/1.0
 
-Caffe is a deep learning framework made with expression, speed, and modularity in mind.
-It is developed by Berkeley AI Research ([BAIR](http://bair.berkeley.edu))/The Berkeley Vision and Learning Center (BVLC) and community contributors.
+## Additional Components
+Check on each public repository for documentation on additional layers and fearures.
 
-Check out the [project site](http://caffe.berkeleyvision.org) for all the details like
+### 1. Caffe layers from `Lifted Structured Feature Embedding`
+From: https://github.com/rksltnl/Deep-Metric-Learning-CVPR16.git
 
-- [DIY Deep Learning for Vision with Caffe](https://docs.google.com/presentation/d/1UeKXVgRvvxg9OUdh_UiC5G71UMscNPlvArsWER41PsU/edit#slide=id.p)
-- [Tutorial Documentation](http://caffe.berkeleyvision.org/tutorial/)
-- [BAIR reference models](http://caffe.berkeleyvision.org/model_zoo.html) and the [community model zoo](https://github.com/BVLC/caffe/wiki/Model-Zoo)
-- [Installation instructions](http://caffe.berkeleyvision.org/installation.html)
+Layers added:
+* `lifted_struct_similarity_softmax_layer`
 
-and step-by-step examples.
+File change: 
+* `src/caffe/proto/caffe.proto`
 
-[![Join the chat at https://gitter.im/BVLC/caffe](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/BVLC/caffe?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+### 2. Caffe layers from `Hard-Aware-Deeply-Cascaded-Embedding`
+From: https://github.com/PkuRainBow/Hard-Aware-Deeply-Cascaded-Embedding_release.git
 
-Please join the [caffe-users group](https://groups.google.com/forum/#!forum/caffe-users) or [gitter chat](https://gitter.im/BVLC/caffe) to ask questions and talk about methods and models.
-Framework development discussions and thorough bug reports are collected on [Issues](https://github.com/BVLC/caffe/issues).
+Layers added:
+* `normalization_layer`
+* `pair_fast_loss_layer`
 
-Happy brewing!
+File change: 
+* `src/caffe/proto/caffe.proto`
 
-## License and Citation
+### 3. Caffe with real-time data augmentation
+From: https://github.com/kevinlin311tw/caffe-augmentation.git
 
-Caffe is released under the [BSD 2-Clause license](https://github.com/BVLC/caffe/blob/master/LICENSE).
-The BAIR/BVLC reference models are released for unrestricted use.
-
-Please cite Caffe in your publications if it helps your research:
-
-    @article{jia2014caffe,
-      Author = {Jia, Yangqing and Shelhamer, Evan and Donahue, Jeff and Karayev, Sergey and Long, Jonathan and Girshick, Ross and Guadarrama, Sergio and Darrell, Trevor},
-      Journal = {arXiv preprint arXiv:1408.5093},
-      Title = {Caffe: Convolutional Architecture for Fast Feature Embedding},
-      Year = {2014}
-    }
+Main changes: 
+* `src/caffe/data_transformer.cpp`
+* `src/caffe/proto/caffe.proto`
