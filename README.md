@@ -1,5 +1,5 @@
-# Caffe For Image Search
-Customized `caffe` for Image Search. Installation is the same as `BVLC/caffe` [installation](http://caffe.berkeleyvision.org/installation.html)
+# Caffe
+A customized `caffe`. Installation is the same as `BVLC/caffe` [installation](http://caffe.berkeleyvision.org/installation.html)
 
 ## Base caffe version: 
 `BVLC/caffe v1.0` https://github.com/BVLC/caffe/tree/1.0
