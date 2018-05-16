@@ -59,6 +59,7 @@ void LiftedStructSimilaritySoftmaxLossLayer<Dtype>::Forward_cpu(const vector<Blo
   for (int i=0; i<N_; i++){
     for (int j=0; j<N_; j++){
       label_mat[i][j] = (bottom[1]->cpu_data()[i] == bottom[1]->cpu_data()[j]);
+      dot_.mutable_cpu_data()[i*N_+j] = std::max(Dtype(0.0), dot_.cpu_data()[i*N_+j]);
     }
   }
 
@@ -128,7 +129,7 @@ void LiftedStructSimilaritySoftmaxLossLayer<Dtype>::Forward_cpu(const vector<Blo
 
         caffe_add_scalar(loss_aug_inference_.count(), Dtype(-1.0)*max_elem, loss_aug_inference_.mutable_cpu_data());
         caffe_exp(loss_aug_inference_.count(), loss_aug_inference_.mutable_cpu_data(), loss_aug_inference_.mutable_cpu_data());
-        Dtype soft_maximum = log(caffe_cpu_dot(num_negatives, summer_vec_.cpu_data(), loss_aug_inference_.mutable_cpu_data())) + max_elem;
+        Dtype soft_maximum = log(std::max(Dtype(1e-8), caffe_cpu_dot(num_negatives, summer_vec_.cpu_data(), loss_aug_inference_.mutable_cpu_data()))) + max_elem;
 
         // hinge the soft_maximum - S_ij (positive pair similarity)
         Dtype this_loss = std::max(soft_maximum + dist_pos, Dtype(0.0));
@@ -143,7 +144,7 @@ void LiftedStructSimilaritySoftmaxLossLayer<Dtype>::Forward_cpu(const vector<Blo
         // update from positive distance dJ_dD_{ij}; update x_i, x_j
         Dtype scaler(0.0);
 
-        scaler = Dtype(2.0)*this_loss / dist_pos;
+        scaler = Dtype(2.0)*this_loss / std::max(dist_pos, Dtype(1e-6));
         // update x_i
         caffe_axpy(K_, scaler * Dtype(1.0), blob_pos_diff_.cpu_data(), bout + i*K_);
         // update x_j
@@ -159,7 +160,7 @@ void LiftedStructSimilaritySoftmaxLossLayer<Dtype>::Forward_cpu(const vector<Blo
             dJ_dDik = Dtype(2.0)*this_loss * Dtype(-1.0)* loss_aug_inference_.cpu_data()[neg_idx] / sum_exp;
             neg_idx++;
 
-            scaler = dJ_dDik / sqrt(dot_.cpu_data()[i*N_ + k]);
+            scaler = dJ_dDik / std::max(Dtype(sqrt(dot_.cpu_data()[i*N_ + k])), Dtype(1e-6));
 
             // update x_i
             caffe_axpy(K_, scaler * Dtype(1.0), blob_neg_diff_.cpu_data(), bout + i*K_);

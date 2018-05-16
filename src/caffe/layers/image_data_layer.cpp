@@ -29,6 +29,10 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   const int new_width  = this->layer_param_.image_data_param().new_width();
   const bool is_color  = this->layer_param_.image_data_param().is_color();
   string root_folder = this->layer_param_.image_data_param().root_folder();
+  const int image_batch_copies = this->layer_param_.image_data_param().image_batch_copies();
+  const int batch_size = this->layer_param_.image_data_param().batch_size();
+  
+  CHECK((batch_size % image_batch_copies)==0);
 
   CHECK((new_height == 0 && new_width == 0) ||
       (new_height > 0 && new_width > 0)) << "Current implementation requires "
@@ -79,7 +83,6 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   vector<int> top_shape = this->data_transformer_->InferBlobShape(cv_img);
   this->transformed_data_.Reshape(top_shape);
   // Reshape prefetch_data and top[0] according to the batch_size.
-  const int batch_size = this->layer_param_.image_data_param().batch_size();
   CHECK_GT(batch_size, 0) << "Positive batch size required";
   top_shape[0] = batch_size;
   for (int i = 0; i < this->prefetch_.size(); ++i) {
@@ -117,6 +120,7 @@ void ImageDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
   CHECK(this->transformed_data_.count());
   ImageDataParameter image_data_param = this->layer_param_.image_data_param();
   const int batch_size = image_data_param.batch_size();
+  const int image_batch_copies = image_data_param.image_batch_copies();
   const int new_height = image_data_param.new_height();
   const int new_width = image_data_param.new_width();
   const bool is_color = image_data_param.is_color();
@@ -156,14 +160,18 @@ void ImageDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
 
     prefetch_label[item_id] = lines_[lines_id_].second;
     // go to the next iter
-    lines_id_++;
-    if (lines_id_ >= lines_size) {
-      // We have reached the end. Restart from the first.
-      DLOG(INFO) << "Restarting data prefetching from start.";
-      lines_id_ = 0;
-      if (this->layer_param_.image_data_param().shuffle()) {
-        ShuffleImages();
-      }
+    if ((item_id % image_batch_copies) == image_batch_copies-1)
+    {
+        // go to the next iter
+        lines_id_++;
+        if (lines_id_ >= lines_size) {
+          // We have reached the end. Restart from the first.
+          DLOG(INFO) << "Restarting data prefetching from start.";
+          lines_id_ = 0;
+          if (this->layer_param_.image_data_param().shuffle()) {
+            ShuffleImages();
+          }
+        }
     }
   }
   batch_timer.Stop();

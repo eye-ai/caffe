@@ -308,7 +308,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 149 (last added: pair_fast_loss_param)
+// LayerParameter next available layer-specific ID: 150 (last added: center_loss_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -407,6 +407,7 @@ message LayerParameter {
   optional WindowDataParameter window_data_param = 129;
   optional LiftedStructSimilaritySoftmaxLossParameter lifted_struct_sim_softmax_loss_param = 147;
   optional PairFastLossParameter pair_fast_loss_param = 148;
+  optional CenterLossParameter center_loss_param = 149;
 }
 
 // Message that stores parameters used to apply transformation
@@ -440,6 +441,7 @@ message TransformationParameter {
   optional bool smooth_filtering = 12 [default = false];
   optional bool jpeg_compression = 13 [default = false];
   optional bool display = 14 [default = false];
+  optional bool flipping = 15 [default = false];
 }
 
 // Message that stores parameters shared by loss layers
@@ -577,6 +579,8 @@ message ContrastiveLossParameter {
   // legacy_version = true uses (margin - d^2). This is kept to support /
   // reproduce existing models and results
   optional bool legacy_version = 2 [default = false];
+  // image copies in a batch
+  optional int32 image_batch_copies = 3 [default = 1];
 }
 
 message ConvolutionParameter {
@@ -827,6 +831,8 @@ message ImageDataParameter {
   optional bool mirror = 6 [default = false];
   optional string root_folder = 12 [default = ""];
   optional uint32 num_of_labels = 13 [default = 1];
+  // Use the same image several times in a batch. For using same image with different augmentations
+  optional uint32 image_batch_copies = 14 [default = 1];
 }
 
 message InfogainLossParameter {
@@ -1438,5 +1444,14 @@ message PairFastLossParameter {
        BOTH = 2;
      }
      optional MODE mode = 4 [default = BOTH];
-   }
+}
+
+message CenterLossParameter {
+  optional uint32 num_output = 1; // The number of outputs for the layer
+  optional FillerParameter center_filler = 2; // The filler for the centers
+  // The first axis to be lumped into a single inner product computation;
+  // all preceding axes are retained in the output.
+  // May be negative to index from the end (e.g., -1 for the last axis).
+  optional int32 axis = 3 [default = 1];
+}
 
