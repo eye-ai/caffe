@@ -138,6 +138,8 @@ class DataTransformer {
    */
   virtual int Rand(int n);
 
+  virtual double Rand();
+
   void Transform(const Datum& datum, Dtype* transformed_data);
   // Tranformation parameters
   TransformationParameter param_;

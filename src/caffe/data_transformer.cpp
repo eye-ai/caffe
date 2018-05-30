@@ -258,46 +258,6 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   CHECK_GE(img_width, crop_size);
 
 
-  Dtype* mean = NULL;
-  if (has_mean_file) {
-    CHECK_EQ(img_channels, data_mean_.channels());
-    CHECK_EQ(img_height, data_mean_.height());
-    CHECK_EQ(img_width, data_mean_.width());
-    mean = data_mean_.mutable_cpu_data();
-  }
-  if (has_mean_values) {
-    CHECK(mean_values_.size() == 1 || mean_values_.size() == img_channels) <<
-     "Specify either 1 mean_value or as many as channels: " << img_channels;
-    if (img_channels > 1 && mean_values_.size() == 1) {
-      // Replicate the mean_value for simplicity
-      for (int c = 1; c < img_channels; ++c) {
-        mean_values_.push_back(mean_values_[0]);
-      }
-    }
-  }
-
-  int h_off = 0;
-  int w_off = 0;
-  cv::Mat cv_cropped_img = cv_img;
-  if (crop_size) {
-    CHECK_EQ(crop_size, height);
-    CHECK_EQ(crop_size, width);
-    // We only do random crop when we do training.
-    if (phase_ == TRAIN) {
-      h_off = Rand(img_height - crop_size + 1);
-      w_off = Rand(img_width - crop_size + 1);
-    } else {
-      h_off = (img_height - crop_size) / 2;
-      w_off = (img_width - crop_size) / 2;
-    }
-    cv::Rect roi(w_off, h_off, crop_size, crop_size);
-    cv_cropped_img = cv_img(roi);
-  } else {
-    CHECK_EQ(img_height, height);
-    CHECK_EQ(img_width, width);
-  }
-
-  CHECK(cv_cropped_img.data);
 
   /*----------------------------------------------------------------------
    * Addition for Data Augmentation
@@ -309,7 +269,10 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   const bool jpeg_compression = param_.jpeg_compression();
   const bool flipping = param_.flipping();
   // param for rotation
+  const float max_rotation_angle = param_.max_rotation_angle();
   const float rotation_angle_interval = param_.rotation_angle_interval();
+  const float min_zoom = param_.min_zoom();
+  const float max_zoom = param_.max_zoom();
 
   if (display && phase_ == TRAIN)
 	  cv::imshow("Source", cv_img);
@@ -382,7 +345,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
       int apply_JPEG = Rand(2);
       if ( apply_JPEG ) {
         // JPEG quality factor
-        QF = 95 + 1 * (Rand(6));
+        QF = 85 + 1 * (Rand(16));
             int cp[] = {1, QF};
         vector<int> compression_params(cp,cp + 2);
             vector<unsigned char> img_jpeg;
@@ -400,37 +363,82 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   }
 
   // Rotation -------------------------------------------------------------
-  double rotation_degree;
-  if ( rotation_angle_interval!=1 ) {
+  double rotation_degree = 0;
+  if ( max_rotation_angle!=0 || rotation_angle_interval>0 || min_zoom != 1 || max_zoom != 1) {
       cv::Mat dst;
+      if (max_rotation_angle != 0)
+      {
+          rotation_degree = (Rand()-0.5)*2*max_rotation_angle;
+      }
+    else if (rotation_angle_interval>0)
+    {
       int interval = 360/rotation_angle_interval;
       int apply_rotation = Rand(interval);
-
-      cv::Size dsize = cv::Size(cv_cropped_img.cols*1.5,cv_cropped_img.rows*1.5);
-      cv::Mat resize_img = cv::Mat(dsize,CV_32S);
-      cv::resize(cv_cropped_img, resize_img,dsize);
-
-      cv::Point2f pt(resize_img.cols/2., resize_img.rows/2.);    
       rotation_degree = apply_rotation*rotation_angle_interval;
-      cv::Mat r = getRotationMatrix2D(pt, rotation_degree, 1.0);
-      warpAffine(resize_img, dst, r, cv::Size(resize_img.cols, resize_img.rows));
-
-
-      cv::Rect myROI(resize_img.cols/6, resize_img.rows/6, cv_cropped_img.cols, cv_cropped_img.rows);
-      cv::Mat crop_after_rotate = dst(myROI);
+    }
+    double scale = 1;
+    if (min_zoom!=1 || max_zoom!=1)
+    {
+        CHECK_LT(min_zoom, max_zoom);
+        CHECK_GT(min_zoom, 0);
+        scale = (min_zoom+(Rand()*(max_zoom-min_zoom)));
+    }
+      cv::Point2f pt(cv_img.cols/2., cv_img.rows/2.);    
+      cv::Mat r = getRotationMatrix2D(pt, rotation_degree, scale);
+      warpAffine(cv_img, cv_img, r, cv::Size(cv_img.cols, cv_img.rows));
       if (display && phase_ == TRAIN)
       {
           LOG(INFO) << "* parameter for rotation: ";
+          LOG(INFO) << "  max_rotation_angle: " << max_rotation_angle;
+          LOG(INFO) << "  scale: " << scale;
           LOG(INFO) << "  angle_interval: " << rotation_angle_interval;
           LOG(INFO) << "  angle: " << rotation_degree;
-          cv::imshow("Rotation", crop_after_rotate);
+          cv::imshow("Rotation", cv_img);
       }
-
-      crop_after_rotate.copyTo(cv_img);
   }
-  
+  Dtype* mean = NULL;
+  if (has_mean_file) {
+    CHECK_EQ(img_channels, data_mean_.channels());
+    CHECK_EQ(img_height, data_mean_.height());
+    CHECK_EQ(img_width, data_mean_.width());
+    mean = data_mean_.mutable_cpu_data();
+  }
+  if (has_mean_values) {
+    CHECK(mean_values_.size() == 1 || mean_values_.size() == img_channels) <<
+     "Specify either 1 mean_value or as many as channels: " << img_channels;
+    if (img_channels > 1 && mean_values_.size() == 1) {
+      // Replicate the mean_value for simplicity
+      for (int c = 1; c < img_channels; ++c) {
+        mean_values_.push_back(mean_values_[0]);
+      }
+    }
+  }
+
+  int h_off = 0;
+  int w_off = 0;
+  cv::Mat cv_cropped_img = cv_img;
+  if (crop_size) {
+    CHECK_EQ(crop_size, height);
+    CHECK_EQ(crop_size, width);
+    // We only do random crop when we do training.
+    if (phase_ == TRAIN) {
+      h_off = Rand(img_height - crop_size + 1);
+      w_off = Rand(img_width - crop_size + 1);
+    } else {
+      h_off = (img_height - crop_size) / 2;
+      w_off = (img_width - crop_size) / 2;
+    }
+    cv::Rect roi(w_off, h_off, crop_size, crop_size);
+    cv_cropped_img = cv_img(roi);
+  } else {
+    CHECK_EQ(img_height, height);
+    CHECK_EQ(img_width, width);
+  }
+
+  CHECK(cv_cropped_img.data);
+ 
   if (display && phase_ == TRAIN)
-      cv::imshow("Final", cv_img);
+      cv::imshow("Final", cv_cropped_img);
 
   //----------------------------------------------------------------------
   //--------------------!! for debug only !!-------------------
@@ -441,7 +449,8 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 	LOG(INFO) << "* parameter for cropping: ";
 	LOG(INFO) << "  w: " << w_off << ", h: " << h_off;
 	LOG(INFO) << "  roi_width: " << crop_size << ", roi_height: " << crop_size;
-    cvWaitKey(10);
+    while (cvWaitKey()!=' ');
+    cvDestroyAllWindows();
   }
   /*----------------------------------------------------------------------
    * !!!End of Addition for Data Augmentation
@@ -680,11 +689,15 @@ void DataTransformer<Dtype>::InitRand() {
   const bool smooth_filtering = param_.smooth_filtering();
   const bool jpeg_compression = param_.jpeg_compression();
   const bool flipping = param_.flipping();
+  const float max_rotation_angle = param_.max_rotation_angle();
   const float rotation_angle_interval = param_.rotation_angle_interval();
   const bool mirror = param_.mirror();
+  const float min_zoom = param_.min_zoom();
+  const float max_zoom = param_.max_zoom();
 
   const bool needs_rand = contrast_adjustment || smooth_filtering ||
-      jpeg_compression || flipping || (rotation_angle_interval!=1) ||
+      jpeg_compression || flipping || (max_rotation_angle>0) || (rotation_angle_interval>0) ||
+      (min_zoom!=1) || (max_zoom!=1) ||
       mirror || (phase_ == TRAIN && param_.crop_size());
   if (needs_rand) {
     const unsigned int rng_seed = caffe_rng_rand();
@@ -701,6 +714,14 @@ int DataTransformer<Dtype>::Rand(int n) {
   caffe::rng_t* rng =
       static_cast<caffe::rng_t*>(rng_->generator());
   return ((*rng)() % n);
+}
+
+template <typename Dtype>
+double DataTransformer<Dtype>::Rand() {
+  CHECK(rng_);
+  caffe::rng_t* rng =
+      static_cast<caffe::rng_t*>(rng_->generator());
+  return ((double)((*rng)() % INT_MAX)) / INT_MAX;
 }
 
 INSTANTIATE_CLASS(DataTransformer);

@@ -1,5 +1,5 @@
-# Caffe
-A customized `caffe`. Installation is the same as `BVLC/caffe` [installation](http://caffe.berkeleyvision.org/installation.html)
+# Caffe For Image Search
+Customized `caffe` for Image Search. Installation is the same as `BVLC/caffe` [installation](http://caffe.berkeleyvision.org/installation.html)
 
 ## Base caffe version: 
 `BVLC/caffe v1.0` https://github.com/BVLC/caffe/tree/1.0
@@ -31,4 +31,16 @@ From: https://github.com/kevinlin311tw/caffe-augmentation.git
 
 Main changes: 
 * `src/caffe/data_transformer.cpp`
+* `src/caffe/proto/caffe.proto`
+
+### 4. Caffe layers from `Center Loss`
+From: https://github.com/ydwen/caffe-face
+
+Layers added:
+* `center_loss_layer`
+
+File change:
+* `include/caffe/layers/center_loss_layer.hpp`
+* `src/caffe/layers/center_loss_layer.cpp`
+* `src/caffe/layers/center_loss_layer.cu`
 * `src/caffe/proto/caffe.proto`

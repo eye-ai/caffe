@@ -432,16 +432,17 @@ message TransformationParameter {
   // Force the decoded image to have 1 color channels.
   optional bool force_gray = 7 [default = false];
 
-  // Specify the range of scaling factor for doing resizing
-  optional float min_scaling_factor = 8 [default = 0.75];
-  optional float max_scaling_factor = 9 [default = 1.50];
+  // Specify the range of zoom factor for doing resizing. zoom out is less than 1, while zoom in is larger thatn 1
+  optional float min_zoom = 8 [default = 1];
+  optional float max_zoom = 9 [default = 1];
   // Specify the angle interval for doing rotation
-  optional float rotation_angle_interval = 10 [default = 1];
+  optional float rotation_angle_interval = 10 [default = 0];
   optional bool contrast_adjustment = 11 [default = false];
   optional bool smooth_filtering = 12 [default = false];
   optional bool jpeg_compression = 13 [default = false];
   optional bool display = 14 [default = false];
   optional bool flipping = 15 [default = false];
+  optional float max_rotation_angle = 16 [default = 0];
 }
 
 // Message that stores parameters shared by loss layers
